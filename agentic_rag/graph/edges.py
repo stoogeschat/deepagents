@@ -1,12 +1,22 @@
 from typing import Literal
-from langchain.chat_models import init_chat_model
+from langchain_openai import ChatOpenAI
 
 from agentic_rag.core.state import MessagesState
 from agentic_rag.core.models import GradeDocuments
-from agentic_rag.config import GRADER_MODEL, GRADE_PROMPT
+from agentic_rag.config import (
+    CHAT_MODEL_NAME,
+    OPENAI_API_BASE,
+    OPENAI_API_KEY,
+    GRADE_PROMPT,
+)
 
 # Initialize the grader model once and reuse it
-grader_model = init_chat_model(GRADER_MODEL, temperature=0)
+grader_model = ChatOpenAI(
+    model=CHAT_MODEL_NAME,
+    openai_api_base=OPENAI_API_BASE,
+    openai_api_key=OPENAI_API_KEY,
+    temperature=0,
+)
 
 
 def grade_documents(
@@ -14,12 +24,6 @@ def grade_documents(
 ) -> Literal["generate_answer", "rewrite_question"]:
     """
     Determine whether the retrieved documents are relevant to the question.
-
-    Args:
-        state: The current graph state.
-
-    Returns:
-        A string indicating the next node to call.
     """
     question = state["messages"][0].content
     context = state["messages"][-1].content

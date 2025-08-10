@@ -1,8 +1,10 @@
-from langchain.chat_models import init_chat_model
+from langchain_openai import ChatOpenAI
 
 from agentic_rag.core.state import MessagesState
 from agentic_rag.config import (
-    RESPONSE_MODEL,
+    CHAT_MODEL_NAME,
+    OPENAI_API_BASE,
+    OPENAI_API_KEY,
     REWRITE_PROMPT,
     GENERATE_PROMPT,
 )
@@ -15,19 +17,19 @@ class GraphNodes:
 
     def __init__(self, retriever_tool):
         """
-        Initializes the GraphNodes class with the retriever tool.
-
-        Args:
-            retriever_tool: The retriever tool to be used by the nodes.
+        Initializes the GraphNodes class with the retriever tool and local models.
         """
         self.retriever_tool = retriever_tool
-        self.response_model = init_chat_model(RESPONSE_MODEL, temperature=0)
+        self.response_model = ChatOpenAI(
+            model=CHAT_MODEL_NAME,
+            openai_api_base=OPENAI_API_BASE,
+            openai_api_key=OPENAI_API_KEY,
+            temperature=0,
+        )
 
     def generate_query_or_respond(self, state: MessagesState):
         """
         Call the model to generate a response based on the current state.
-        Given the question, it will decide to retrieve using the retriever tool,
-        or simply respond to the user.
         """
         response = self.response_model.bind_tools([self.retriever_tool]).invoke(
             state["messages"]

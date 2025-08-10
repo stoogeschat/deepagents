@@ -1,13 +1,12 @@
-# URLs for the documents to be processed
-DOCUMENT_URLS = [
-    "https://lilianweng.github.io/posts/2024-11-28-reward-hacking/",
-    "https://lilianweng.github.io/posts/2024-07-07-hallucination/",
-    "https://lilianweng.github.io/posts/2024-04-12-diffusion-video/",
-]
+import os
 
-# LLM model names
-RESPONSE_MODEL = "openai:gpt-4.1"
-GRADER_MODEL = "openai:gpt-4.1"
+# Load model and API settings from environment variables
+OPENAI_API_BASE = os.getenv("OPENAI_API_BASE")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME")
+CHAT_MODEL_NAME = os.getenv("CHAT_MODEL_NAME")
+
+# --- Prompts ---
 
 # Prompt for the document grader
 GRADE_PROMPT = (

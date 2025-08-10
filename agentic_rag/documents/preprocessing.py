@@ -1,19 +1,21 @@
-from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import DirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
-def load_documents(urls: list[str]) -> list:
+def load_markdown_documents(directory_path: str) -> list:
     """
-    Load documents from a list of URLs.
+    Load Markdown documents from a specified directory.
 
     Args:
-        urls: A list of URLs to load documents from.
+        directory_path: The path to the directory containing Markdown files.
 
     Returns:
         A list of loaded documents.
     """
-    docs = [WebBaseLoader(url).load() for url in urls]
-    return [item for sublist in docs for item in sublist]
+    # Use DirectoryLoader to load all .md files
+    loader = DirectoryLoader(directory_path, glob="**/*.md", show_progress=True)
+    docs = loader.load()
+    return docs
 
 
 def split_documents(docs: list) -> list:
@@ -27,6 +29,7 @@ def split_documents(docs: list) -> list:
         A list of smaller document chunks.
     """
     text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-        chunk_size=100, chunk_overlap=50
+        chunk_size=500,  # Increased chunk size for potentially larger markdown docs
+        chunk_overlap=100,
     )
     return text_splitter.split_documents(docs)
