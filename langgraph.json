@@ -1,0 +1,8 @@
+{
+  "assistants": [
+    {
+      "name": "Agentic RAG",
+      "path": "src.agentic_rag.app:graph"
+    }
+  ]
+}

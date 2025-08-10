@@ -1,240 +1,121 @@
-# 🧠🤖Deep Agents
+# Agentic RAG 项目
 
-Using an LLM to call tools in a loop is the simplest form of an agent. 
-This architecture, however, can yield agents that are “shallow” and fail to plan and act over longer, more complex tasks. 
-Applications like “Deep Research”, "Manus", and “Claude Code” have gotten around this limitation by implementing a combination of four things:
-a **planning tool**, **sub agents**, access to a **file system**, and a **detailed prompt**.
+## 简介
 
-<img src="deep_agents.png" alt="deep agent" width="600"/>
+本项目是一个基于 LangGraph 实现的 **Agentic RAG** (Retrieval-Augmented Generation) 应用。它不仅能根据用户问题从本地知识库中检索相关信息，还具备自我修正的能力。如果初步检索到的文档不相关，它会尝试改写问题并进行新一轮的检索，从而提高最终生成答案的准确性和相关性。
 
-`deepagents` is a Python package that implements these in a general purpose way so that you can easily create a Deep Agent for your application.
+整个项目被构建为一个可由 `langgraph dev` 启动的本地服务，方便开发和调试。
 
-**Acknowledgements: This project was primarily inspired by Claude Code, and initially was largely an attempt to see what made Claude Code general purpose, and make it even more so.**
+## 主要功能
 
-## Installation
+- **本地文档检索**: 从本地 `datasets` 目录下的 Markdown 文件中提取知识。
+- **智能决策**: Agent能够判断是直接回答问题，还是需要先进行信息检索。
+- **相关性评估**: 对检索到的文档进行相关性打分，判断内容是否能回答用户的问题。
+- **自我修正**: 如果检索到的文档不相关，Agent会自动改写（Re-write）用户的问题，以期获得更好的检索结果。
+- **可配置模型**: 支持通过 `.env` 文件配置使用本地或任何兼容 OpenAI API 的大语言模型（LLM）。
+- **服务化部署**: 可以通过 `langgraph dev` 命令快速启动一个本地 API 服务，并使用 LangGraph Studio 进行可视化调试。
+
+## 技术栈
+
+- **核心框架**: LangGraph, LangChain
+- **模型服务**: 兼容 OpenAI API 的任意模型服务
+- **环境与包管理**: `uv`
+- **数据源**: 本地 Markdown 文件
+
+## 快速开始
+
+请遵循以下步骤来安装、配置并运行本项目。
+
+### 1. 克隆项目
+
+首先，将本项目克隆到您的本地机器：
 
 ```bash
-pip install deepagents
+git clone <your-repo-url>
+cd <your-repo-name>
 ```
 
-## Usage
+### 2. 创建并激活虚拟环境
 
-(To run the example below, will need to `pip install tavily-python`)
+我们使用 `uv` 来管理虚拟环境，以确保项目依赖的隔离。
 
-```python
-import os
-from typing import Literal
+```bash
+# 创建虚拟环境
+uv venv
 
-from tavily import TavilyClient
-from deepagents import create_deep_agent
+# 激活虚拟环境 (Linux / macOS)
+source .venv/bin/activate
 
-
-# Search tool to use to do research
-def internet_search(
-    query: str,
-    max_results: int = 5,
-    topic: Literal["general", "news", "finance"] = "general",
-    include_raw_content: bool = False,
-):
-    """Run a web search"""
-    tavily_async_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
-    return tavily_async_client.search(
-        query,
-        max_results=max_results,
-        include_raw_content=include_raw_content,
-        topic=topic,
-    )
-
-
-# Prompt prefix to steer the agent to be an expert researcher
-research_instructions = """You are an expert researcher. Your job is to conduct thorough research, and then write a polished report.
-
-You have access to a few tools.
-
-## `internet_search`
-
-Use this to run an internet search for a given query. You can specify the number of results, the topic, and whether raw content should be included.
-"""
-
-# Create the agent
-agent = create_deep_agent(
-    [internet_search],
-    research_instructions,
-)
-
-# Invoke the agent
-result = agent.invoke({"messages": [{"role": "user", "content": "what is langgraph?"}]})
+# 激活虚拟环境 (Windows)
+# .venv\Scripts\activate
 ```
 
-See [examples/research/research_agent.py](examples/research/research_agent.py) for a more complex example.
+### 3. 安装依赖
 
-The agent created with `create_deep_agent` is just a LangGraph graph - so you can interact with it (streaming, human-in-the-loop, memory, studio)
-in the same way you would any LangGraph agent.
+在激活虚拟环境后，使用 `uv` 来安装项目所需的所有依赖。
 
-## Creating a custom deep agent
+```bash
+uv pip install -e .
+```
+这个命令会读取 `pyproject.toml` 文件，安装所有依赖，并将当前项目以“可编辑”模式安装。
 
-There are three parameters you can pass to `create_deep_agent` to create your own custom deep agent.
+### 4. 配置环境变量
 
-### `tools` (Required)
+项目需要通过环境变量来配置您的模型服务。
 
-The first argument to `create_deep_agent` is `tools`.
-This should be a list of functions or LangChain `@tool` objects.
-The agent (and any subagents) will have access to these tools.
+a. 首先，复制示例文件 `.env.example` 并重命名为 `.env`：
 
-### `instructions` (Required)
-
-The second argument to `create_deep_agent` is `instructions`.
-This will serve as part of the prompt of the deep agent.
-Note that there is a [built in system prompt](src/deepagents/prompts.py) as well, so this is not the *entire* prompt the agent will see.
-
-### `subagents` (Optional)
-
-A keyword-only argument to `create_deep_agent` is `subagents`.
-This can be used to specify any custom subagents this deep agent will have access to.
-You can read more about why you would want to use subagents [here](#sub-agents)
-
-`subagents` should be a list of dictionaries, where each dictionary follow this schema:
-
-```python
-class SubAgent(TypedDict):
-    name: str
-    description: str
-    prompt: str
-    tools: NotRequired[list[str]]
+```bash
+cp .env.example .env
 ```
 
-- **name**: This is the name of the subagent, and how the main agent will call the subagent
-- **description**: This is the description of the subagent that is shown to the main agent
-- **prompt**: This is the prompt used for the subagent
-- **tools**: This is the list of tools that the subagent has access to. By default will have access to all tools passed in, as well as all built-in tools.
+b. 然后，编辑 `.env` 文件，填入您的本地模型服务信息：
 
-To use it looks like:
+```
+# 您的本地 OpenAI 兼容 API 的基础 URL
+OPENAI_API_BASE="http://localhost:8000/v1"
 
-```python
-research_sub_agent = {
-    "name": "research-agent",
-    "description": "Used to research more in depth questions",
-    "prompt": sub_research_prompt,
-}
-subagents = [research_subagent]
-agent = create_deep_agent(
-    tools,
-    prompt,
-    subagents=subagents
-)
+# 您的 API 密钥 (如果本地服务不需要，可以填写任意字符)
+OPENAI_API_KEY="YOUR_API_KEY"
+
+# 您使用的 Embedding 模型的名称
+EMBEDDING_MODEL_NAME="text-embedding-ada-002"
+
+# 您使用的 Chat 模型的名称
+CHAT_MODEL_NAME="gpt-4"
 ```
 
-### `model` (Optional)
+### 5. 准备您的知识库
 
-By default, `deepagents` uses `"claude-sonnet-4-20250514"`. You can customize this by passing any [LangChain model object](https://python.langchain.com/docs/integrations/chat/).
+将您自己的 `.md` (Markdown) 文件放入项目根目录下的 `datasets` 文件夹中。您可以删除或替换掉里面自带的 `sample.md` 文件。
 
-#### Example: Using a Custom Model
+### 6. 启动服务
 
-Here's how to use a custom model (like OpenAI's `gpt-oss` model via Ollama):
+一切准备就绪！现在，使用 `langgraph` 命令行工具来启动本地开发服务。
 
-(Requires `pip install langchain` and then `pip install langchain-ollama` for Ollama models)
-
-```python
-from deepagents import create_deep_agent
-
-# ... existing agent definitions ...
-
-model = init_chat_model(
-    model="ollama:gpt-oss:20b",  
-)
-agent = create_deep_agent(
-    tools=tools,
-    instructions=instructions,
-    model=model,
-    ...
-)
+```bash
+langgraph dev
 ```
 
-## Deep Agent Details
-
-The below components are built into `deepagents` and helps make it work for deep tasks off-the-shelf.
-
-### System Prompt
-
-`deepagents` comes with a [built-in system prompt](src/deepagents/prompts.py). This is relatively detailed prompt that is heavily based on and inspired by [attempts](https://github.com/kn1026/cc/blob/main/claudecode.md) to [replicate](https://github.com/asgeirtj/system_prompts_leaks/blob/main/Anthropic/claude-code.md)
-Claude Code's system prompt. It was made more general purpose than Claude Code's system prompt.
-This contains detailed instructions for how to use the built-in planning tool, file system tools, and sub agents.
-Note that part of this system prompt [can be customized](#instructions-required)
-
-Without this default system prompt - the agent would not be nearly as successful at going as it is.
-The importance of prompting for creating a "deep" agent cannot be understated.
-
-### Planing Tool
-
-`deepagents` comes with a built-in planning tool. This planning tool is very simple and is based on ClaudeCode's TodoWrite tool.
-This tool doesn't actually do anything - it is just a way for the agent to come up with a plan, and then have that in the context to help keep it on track.
-
-### File System Tools
-
-`deepagents` comes with four built-in file system tools: `ls`, `edit_file`, `read_file`, `write_file`.
-These do not actually use a file system - rather, they mock out a file system using LangGraph's State object.
-This means you can easily run many of these agents on the same machine without worrying that they will edit the same underlying files.
-
-Right now the "file system" will only be one level deep (no sub directories).
-
-These files can be passed in (and also retrieved) by using the `files` key in the LangGraph State object.
-
-```python
-agent = create_deep_agent(...)
-
-result = agent.invoke({
-    "messages": ...,
-    # Pass in files to the agent using this key
-    # "files": {"foo.txt": "foo", ...}
-})
-
-# Access any files afterwards like this
-result["files"]
+如果一切顺利，您会看到类似以下的输出：
+```
+>    Ready!
+>
+>    - API: http://localhost:2024/
+>
+>    - Docs: http://localhost:2024/docs
+>
+>    - LangGraph Studio Web UI: https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:2024
 ```
 
-### Sub Agents
+## 如何使用
 
-`deepagents` comes with the built-in ability to call sub agents (based on Claude Code).
-It has access to a `general-purpose` subagent at all times - this is a subagent with the same instructions as the main agent and all the tools that is has access to.
-You can also specify [custom sub agents](#subagents-optional) with their own instructions and tools.
+服务启动后，您可以通过以下方式与 Agentic RAG 应用进行交互：
 
-Sub agents are useful for ["context quarantine"](https://www.dbreunig.com/2025/06/26/how-to-fix-your-context.html#context-quarantine) (to help not pollute the overall context of the main agent)
-as well as custom instructions.
+1.  **LangGraph Studio (推荐)**:
+    - 打开浏览器，访问 `langgraph dev` 命令输出的 `LangGraph Studio Web UI` 链接。
+    - 在 Studio 界面中，您可以直观地看到图（Graph）的结构，发送请求，并实时观察每一步的输入和输出，非常适合调试。
 
-## MCP
-
-The `deepagents` library can be ran with MCP tools. This can be achieved by using the [Langchain MCP Adapter library](https://github.com/langchain-ai/langchain-mcp-adapters).
-
-(To run the example below, will need to `pip install langchain-mcp-adapters`)
-
-```python
-import asyncio
-from langchain_mcp_adapters.client import MultiServerMCPClient
-from deepagents import create_deep_agent
-
-async def main():
-    # Collect MCP tools
-    mcp_client = MultiServerMCPClient(...)
-    mcp_tools = await mcp_client.get_tools()
-
-    # Create agent
-    agent = create_deep_agent(tools=mcp_tools, ....)
-
-    # Stream the agent
-    async for chunk in agent.astream(
-        {"messages": [{"role": "user", "content": "what is langgraph?"}]},
-        stream_mode="values"
-    ):
-        if "messages" in chunk:
-            chunk["messages"][-1].pretty_print()
-
-asyncio.run(main())
-```
-
-## Roadmap
-- [ ] Allow users to customize full system prompt
-- [ ] Code cleanliness (type hinting, docstrings, formating)
-- [ ] Allow for more of a robust virtual filesystem
-- [ ] Create an example of a deep coding agent built on top of this
-- [ ] Benchmark the example of [deep research agent](examples/research/research_agent.py)
-- [ ] Add human-in-the-loop support for tools
+2.  **API 请求**:
+    - 您也可以使用任何 HTTP 客户端（如 `curl`, Postman, 或者 Python `requests` 库）向 `http://localhost:2024/runs/stream` 发送 POST 请求来与应用交互。
+    - 请求体格式请参考 `langgraph dev` 输出的 API 文档 (`http://localhost:2024/docs`)。
