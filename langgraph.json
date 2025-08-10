@@ -1,8 +1,7 @@
 {
-  "assistants": [
-    {
-      "name": "Agentic RAG",
-      "path": "src.agentic_rag.app:graph"
-    }
-  ]
+  "dependencies": ["."],
+  "graphs": {
+    "agentic_rag": "src.agentic_rag.app:graph"
+  },
+  "env": ".env"
 }

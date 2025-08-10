@@ -1,17 +1,16 @@
 from langchain.tools.retriever import create_retriever_tool
 from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import OpenAIEmbeddings
+from langchain_community.embeddings import OllamaEmbeddings
 
-from agentic_rag.config import (
+from src.agentic_rag.config import (
     EMBEDDING_MODEL_NAME,
     OPENAI_API_BASE,
-    OPENAI_API_KEY,
 )
 
 
 def create_retriever_tool_from_docs(docs: list):
     """
-    Create a retriever tool from a list of documents using a local embedding model.
+    Create a retriever tool from a list of documents using an Ollama embedding model.
 
     Args:
         docs: A list of document chunks to be indexed.
@@ -19,11 +18,11 @@ def create_retriever_tool_from_docs(docs: list):
     Returns:
         A LangChain retriever tool.
     """
-    # 1. Initialize embeddings with local model configuration
-    embeddings = OpenAIEmbeddings(
+    # 1. Initialize embeddings with Ollama configuration
+    # Note: OllamaEmbeddings uses `base_url` instead of `openai_api_base`
+    embeddings = OllamaEmbeddings(
         model=EMBEDDING_MODEL_NAME,
-        openai_api_base=OPENAI_API_BASE,
-        openai_api_key=OPENAI_API_KEY,
+        base_url=OPENAI_API_BASE,
     )
 
     # 2. Create an in-memory vector store
